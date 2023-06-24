@@ -1,0 +1,7 @@
+#LinearRegression
+
+from scipy import stats
+m,c,gf,p,s = stats.linregress(pageSp,amt)
+
+#gf represents r squared value. If r squared value is close to 1, it means its a really good fit.
+gf ** 2
