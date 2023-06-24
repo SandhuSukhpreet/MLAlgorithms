@@ -1,0 +1,70 @@
+#Load the movie data
+import pandas as pd
+r_cols = ['user_id', 'movie_id', 'rating']
+ratings = pd.read_csv('ml-100k/u.data', sep='\t', names=r_cols, usecols=range(3))
+ratings.head()
+
+#Group the data by movie ID
+import numpy as np
+movieProperties = ratings.groupby('movie_id').agg({'rating': [np.size, np.mean]})
+movieProperties.head()
+
+#Normalize the movie rating from 0 to 1
+movieNumRatings = pd.DataFrame(movieProperties['rating']['size'])
+movieNormalizedNumRatings = movieNumRatings.apply(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)))
+movieNormalizedNumRatings.head()
+
+#Creating one dictionary out of all data
+movieDict = {}
+with open(r'ml-100k/u.item', encoding="ISO-8859-1") as f:
+    temp = ''
+    for line in f:
+        #line.decode("ISO-8859-1")
+        fields = line.rstrip('\n').split('|')
+        movieID = int(fields[0])
+        name = fields[1]
+        genres = fields[5:25]
+        genres = map(int, genres)
+        movieDict[movieID] = (name, np.array(list(genres)), movieNormalizedNumRatings.loc[movieID].get('size'), movieProperties.loc[movieID].rating.get('mean'))
+
+#To print movie at ID 2
+print(movieDict[2])
+
+#Calculating the distance based upon similarity
+from scipy import spatial
+def ComputeDistance(a, b):
+    genresA = a[1]
+    genresB = b[1]
+    genreDistance = spatial.distance.cosine(genresA, genresB)
+    popularityA = a[2]
+    popularityB = b[2]
+    popularityDistance = abs(popularityA - popularityB)
+    return genreDistance + popularityDistance
+    
+ComputeDistance(movieDict[2], movieDict[4])
+
+
+#Printing nearest neighbours of a movie
+import operator
+def getNeighbors(movieID, K):
+    distances = []
+    for movie in movieDict:
+        if (movie != movieID):
+            dist = ComputeDistance(movieDict[movieID], movieDict[movie])
+            distances.append((movie, dist))
+    distances.sort(key=operator.itemgetter(1))
+    neighbors = []
+    for x in range(K):
+        neighbors.append(distances[x][0])
+    return neighbors
+
+K = 10
+avgRating = 0
+neighbors = getNeighbors(1, K)
+for neighbor in neighbors:
+    avgRating += movieDict[neighbor][3]
+    print (movieDict[neighbor][0] + " " + str(movieDict[neighbor][3]))
+    
+avgRating /= K
+
+
